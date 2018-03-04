@@ -17,14 +17,14 @@ api = Api(app)
 
 
 
-class nouce(Resource):
+class nonce(Resource):
     def get(self):
-        nouce = "%032x" % random.getrandbits(256)
-        randomv = {'nouce': nouce}
+        nonce = "%032x" % random.getrandbits(256)
+        randomv = {'nonce': nonce}
         return jsonify(randomv);
 
 
-api.add_resource(nouce, '/nouce')
+api.add_resource(nonce, '/nonce')
 
 if __name__ == "__main__":
     app.run(host='127.0.0.1', port=8001)

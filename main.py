@@ -27,15 +27,15 @@ def call_hash(data):
         return response.json()['hash']
 
 
-def call_nouce():
-    nouce_url = 'http://127.0.0.1:8001/nouce'
-    response = requests.get(nouce_url)
+def call_nonce():
+    nonce_url = 'http://127.0.0.1:8001/nonce'
+    response = requests.get(nonce_url)
     if response.status_code == 200:
-        return response.json()['nouce']
+        return response.json()['nonce']
 
 
 def get_pre_hash(cursor):
-    cursor.execute('select * from journal order by id desc limit 1')
+    cursor.execute('select * from blockchain order by id desc limit 1')
     results = cursor.fetchall()
     if results:
         return results[0]['hash']
@@ -51,10 +51,10 @@ def database_connect():
 
 
 def add_hashing_entries(data1):
-    nouce = {"nouce": u""}
+    nonce = {"nonce": u""}
     hash = {"hash": u""}
     pre_hash = {"pre_hash": u""}
-    data1.update(nouce)
+    data1.update(nonce)
     data1.update(hash)
     data1.update(pre_hash)
     return data1
@@ -73,18 +73,19 @@ app = Flask(__name__)
 @app.route("/insert", methods=['GET', 'POST'])
 def insert():
     if request.method == 'POST':
-        data = request.form['data']
-        data1 = loads(data)
+        data = request.form
+        data1 = data.to_dict()
         conn, cursor = database_connect()
         try:
             cursor.execute(
-                "INSERT INTO journal(journal_id, entry_date, create_time, created_by, post_status, account_code, amount, dr_cr, nouce, hash) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                [data1['journal_id'], data1['entry_date'], data1['create_time'], data1['created_by'],
-                 data1['post_status'], data1['account_code'], data1['amount'], data1['dr_cr'], data1['nouce'],
-                 data1['hash']])
+                "INSERT INTO blockchain(device_id, time, temp, humid, moist1, moist2, nonce, hash) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?)",
+                [data1['device_id'], data1['time'], data1['temp'], data1['humid'],
+                 data1['moist1'], data1['moist2'], data1['nonce'], data1['hash']])
             conn.commit()
+            print("Success")
             return "Success"
         except:
+            print("Failed")
             return "Failed"
             conn.close()
     else:
@@ -97,7 +98,7 @@ def verify():
         try:
             id = request.args.get('id', default=2, type=int)
             conn, cursor = database_connect()
-            cursor.execute('SELECT * FROM journal WHERE id <= ? ORDER BY id DESC LIMIT 2', [id, ])
+            cursor.execute('SELECT * FROM blockchain WHERE id <= ? ORDER BY id DESC LIMIT 2', [id, ])
             results = cursor.fetchall()
             records_verify = results[0]
             hash_now = results[0]['hash']
@@ -119,36 +120,38 @@ def verify():
         return ""
 
 
-data2 = {"journal_id": "JE000001",
-         "entry_date": "2016-11-06",
-         "create_time": "2016-11-06 18:00:00",
-         "created_by": "Adam2",
-         "post_status": "P",
-         "account_code": "100000",
-         "amount": 16453.24,
-         "dr_cr": "C"
-         }
-
-
 @app.route("/construct", methods=['GET', 'POST'])
 def construct():
     if request.method == 'POST':
-        data = request.form['data']
-        data1 = loads(data)
+        data = request.form  # .get("data")
+        data1 = data.to_dict()
+        print(data1)
         conn, cursor = database_connect()
         data1 = add_hashing_entries(data1)
+        print(data1)
         data1['pre_hash'] = get_pre_hash(cursor)
-        data1['nouce'] = call_nouce()
+        data1['nonce'] = call_nonce()
         data1['hash'] = call_hash(data1)
         conn.close()
-        print(data1)
         return jsonpify(data1)
     else:
         print("NOPE")
         return ""
 
-
-
+def create_db():
+    conn,cursor = database_connect()
+    if conn is not None:
+        sql_create_projects_table = """CREATE TABLE IF NOT EXISTS blockchain (id INTEGER PRIMARY KEY, device_id text,time DATE NOT NULL,temp NUMBER,humid NUMBER,moist1 NUMBER,moist2 NUMBER, nonce text, hash text); """
+        try:
+            c = conn.cursor()
+            c.execute(sql_create_projects_table)
+        except sqlite3.Error as e:
+            print(e)
+    else:
+        print ("Failed to create db table.")
+    return
 
 if __name__ == "__main__":
+    create_db()
     app.run(host='127.0.0.1', port=8000)
+
