@@ -5,7 +5,7 @@
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import sqlite3
-from flask import Flask, request
+from flask import Flask, request, render_template
 from flask_restful import Resource, Api
 from json import dumps, loads
 from flask_jsonpify import jsonpify
@@ -116,6 +116,36 @@ def verify():
         except:
             return "Error"
         conn.close()
+    else:
+        return ""
+
+@app.route("/display", methods=['GET', 'POST'])
+def display():
+    if request.method == 'GET':
+        try:
+            conn, cursor = database_connect()
+            cursor.execute('SELECT * FROM blockchain;')
+            results = cursor.fetchall()
+            out = render_template("data.html", data=results)
+            return out
+        except:
+            return "Error displaying data"
+            conn.close()
+    else:
+        return ""
+
+@app.route("/display_all", methods=['GET', 'POST'])
+def display_all():
+    if request.method == 'GET':
+        try:
+            conn, cursor = database_connect()
+            cursor.execute('SELECT * FROM blockchain;')
+            results = cursor.fetchall()
+            out = render_template("data_all.html", data=results)
+            return out
+        except:
+            return "Error displaying data"
+            conn.close()
     else:
         return ""
 
