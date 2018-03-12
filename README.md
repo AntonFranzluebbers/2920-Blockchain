@@ -23,6 +23,8 @@ Go to `localhost:8000/display_all` for data including the nonce and hash.
 If it doesn't work, it is because my Raspberry Pi isn't plugged in. Contact me if you want me to turn it on.  
 Go to `http://2920proj.ddns.net/display` or `http://2920proj.ddns.net/display_all` just like above.
 
+## Video
+https://youtu.be/Kgwnvgy4lSY
 
 ## References
 https://github.com/adamchinkc/blockchain_database/  
