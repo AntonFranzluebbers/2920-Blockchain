@@ -11,6 +11,8 @@ from json import dumps, loads
 from flask_jsonpify import jsonpify
 import json
 import requests
+import random
+import tester
 
 
 def call_hash(data):
@@ -78,16 +80,16 @@ def insert():
         conn, cursor = database_connect()
         try:
             cursor.execute(
-                "INSERT INTO blockchain(device_id, time, temp, humid, moist1, moist2, nonce, hash) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?)",
-                [data1['device_id'], data1['time'], data1['temp'], data1['humid'],
-                 data1['moist1'], data1['moist2'], data1['nonce'], data1['hash']])
+                    "INSERT INTO blockchain(device_id, time, temp, humid, moist1, moist2, nonce, hash) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?)",
+                    [data1['device_id'], data1['time'], data1['temp'], data1['humid'],
+                        data1['moist1'], data1['moist2'], data1['nonce'], data1['hash']])
             conn.commit()
             print("Success")
             return "Success"
         except:
             print("Failed")
             return "Failed"
-            conn.close()
+        conn.close()
     else:
         return ""
 
@@ -130,7 +132,7 @@ def display():
             return out
         except:
             return "Error displaying data"
-            conn.close()
+        conn.close()
     else:
         return ""
 
@@ -145,10 +147,9 @@ def display_all():
             return out
         except:
             return "Error displaying data"
-            conn.close()
+        conn.close()
     else:
         return ""
-
 
 @app.route("/construct", methods=['GET', 'POST'])
 def construct():
@@ -158,7 +159,6 @@ def construct():
         print(data1)
         conn, cursor = database_connect()
         data1 = add_hashing_entries(data1)
-        print(data1)
         data1['pre_hash'] = get_pre_hash(cursor)
         data1['nonce'] = call_nonce()
         data1['hash'] = call_hash(data1)
@@ -184,4 +184,3 @@ def create_db():
 if __name__ == "__main__":
     create_db()
     app.run(host='127.0.0.1', port=8000)
-
