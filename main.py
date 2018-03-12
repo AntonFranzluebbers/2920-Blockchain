@@ -12,7 +12,6 @@ from flask_jsonpify import jsonpify
 import json
 import requests
 import random
-import tester
 
 
 def call_hash(data):
@@ -183,4 +182,4 @@ def create_db():
 
 if __name__ == "__main__":
     create_db()
-    app.run(host='127.0.0.1', port=8000)
+    app.run(host='0.0.0.0', port=8000)
