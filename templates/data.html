@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Data output</title>
+	<style>
+table {
+    font-family: arial, sans-serif;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+td, th {
+    border: 1px solid #dddddd;
+    text-align: left;
+    padding: 8px;
+}
+
+tr:nth-child(even) {
+    background-color: #dddddd;
+}
+	</style>
+</head>
+<body>
+<table>
+	<tr>
+		<td>device_id</td>
+		<td>time</td>
+		<td>temp</td>
+		<td>humid</td>
+		<td>moist1</td>
+		<td>moist2</td>
+	</tr>
+	{% for item in data %}
+	<tr>
+		<td>{{item.device_id}}</td>
+		<td>{{item.time}}</td>
+		<td>{{item.temp}}</td>
+		<td>{{item.humid}}</td>
+		<td>{{item.moist1}}</td>
+		<td>{{item.moist2}}</td>
+	</tr>
+	{% endfor %}
+</table>
+</body>
+</html>
