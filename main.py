@@ -120,6 +120,22 @@ def verify():
     else:
         return ""
 
+@app.route("/", methods=['GET','POST'])
+def home():
+    if request.method == 'GET':
+        try:
+            conn, cursor = database_connect()
+            cursor.execute('SELECT * FROM blockchain;')
+            results = cursor.fetchall()
+            out = render_template("home.html", data=results)
+            return out
+        except:
+            return "Error displaying data"
+        conn.close()
+    else:
+        return ""
+
+
 @app.route("/display", methods=['GET', 'POST'])
 def display():
     if request.method == 'GET':
