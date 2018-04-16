@@ -26,6 +26,7 @@ tr:nth-child(even) {
 	<form name="enter-ids" id="enter-ids">
 		<label>ID 1</label>
 		<input type=text class=id name=id1>
+		<button onclick="startPositioning()">Position on Map</button>
 		<br>
 	</form>
 	<button onclick="add_id_field()">Add another</button>
@@ -54,18 +55,26 @@ tr:nth-child(even) {
 </canvas>
 	<script>
 		var num_id_fields = 1;
+		var positioning = false;
+		var currentDevice = 0;
 
 		function add_id_field() {
 			num_id_fields++;
 			var form = document.getElementById("enter-ids");
 			var label = document.createElement("label");
 			var input = document.createElement("input");
+			var button = document.createElement("button");
+			button.onclick = "startPositioning";
+			button.innerText = "Position on Map";
+			button.id = "p_button"+num_id_fields;
+
 			label.innerText = "ID " + num_id_fields;
 			input.type = "text";
 			input.className = "id";
 			input.name = "id"+num_id_fields;
 			form.appendChild(label);
 			form.appendChild(input);
+			form.appendChild(button);
 			form.appendChild(document.createElement("br"));
 		}
 
@@ -77,9 +86,7 @@ tr:nth-child(even) {
 
 		background.src = "https://lh3.googleusercontent.com/JCaiDpY7R5hAJ4KU8D1YzHgQ5NaHDaEoN0udtNqa9P2ZuYCudPAda0yXE8BgIU8C8zdzXrzQ4p0DRqwhi8E2l5_kY7l7ZDzutjxg7OQegk7mj0SjeM0pLPDdPHoxnU5rPg_BRAKk3Ow=w1050-h665-no";
 
-		var points = new Array(2);
-		points[0] = [2,30,20];
-		points[1] = [200,200, 30];
+		var points = new Array();
 
 		function getDist(x1,y1,x2,y2) {
 			return Math.sqrt(Math.pow(x1-x2,2)+Math.pow(y1-y2,2));
@@ -119,28 +126,34 @@ tr:nth-child(even) {
 
 		// draw heatmap
 		function draw() {
-			var min = findMinValue(points);
-			var max = findMaxValue(points);
-			for (var x=0;x<width;x++) {
-				for (var y=0;y<height;y++) {
-					var heat = 0;
-					var distances = [];
-					var totalDistance = 0;
-					for (var i=0;i<points.length;i++) {
-						var p = points[i];
-						var dist = getDist(p[0],p[1],x,y);
-						var entry = new Array(2);
-						entry[0] = dist;
-						entry[1] = p[2];
-						distances.push(entry);
-						totalDistance += dist;
+			if (points.length > 0) {
+				var min = findMinValue(points);
+				var max = findMaxValue(points);
+				for (var x=0;x<width;x++) {
+					for (var y=0;y<height;y++) {
+						var heat = 0;
+						var distances = [];
+						var totalDistance = 0;
+						for (var i=0;i<points.length;i++) {
+							var p = points[i];
+							var dist = getDist(p[0],p[1],x,y);
+							var entry = new Array(2);
+							entry[0] = dist;
+							entry[1] = p[2];
+							distances.push(entry);
+							totalDistance += dist;
+						}
+						var heat = map(weightedAverage(distances, totalDistance),min,max,0,1);
+						ctx.fillStyle = "rgba(1,0,0," + heat + ")";
+						ctx.fillRect(x,y,1,1);
 					}
-					var heat = map(weightedAverage(distances, totalDistance),min,max,0,1);
-					ctx.fillStyle = "rgba(1,0,0," + heat + ")";
-					console.log(heat);
-					ctx.fillRect(x,y,1,1);
 				}
 			}
+		}
+
+		function startPositioning(which) {
+			positioning = true;
+			currentDevice = which.id[which.id.length-1];
 		}
 
 		var offLeft = canvas.offsetLeft;
@@ -148,11 +161,16 @@ tr:nth-child(even) {
 
 		// Add event listener for `click` events.
 		canvas.addEventListener('click', function(event) {
-			var x = event.pageX - offLeft,
-				y = event.pageY - offTop;
+			if (positioning) {
+				var x = event.pageX - offLeft;
+				var y = event.pageY - offTop;
+				var elem = new Array(2)
+				points.push()
 
-			ctx.fillStyle = "#000";
-			ctx.fillRect(x,y,1,1);
+				ctx.fillStyle = "#000";
+				ctx.fillRect(x - 1, y - 1, 2, 2);
+				positioning = false;
+			}
 
 		}, false);
 
