@@ -19,14 +19,16 @@ tr:nth-child(even) {
     background-color: #dddddd;
 }
 	</style>
+
 </head>
-<body>
+<body onload="draw()">
 	<h2>Enter your device IDs</h2>
 	<form name="enter-ids" id="enter-ids">
 		<label>ID 1</label>
-		<input type=text class=id name=id1></input>
-		<button onclick="add_id_field">Add another</button>
+		<input type=text class=id name=id1>
+		<br>
 	</form>
+	<button onclick="add_id_field()">Add another</button>
 <table>
 	<tr>
 		<td>device_id</td>
@@ -47,6 +49,115 @@ tr:nth-child(even) {
 	</tr>
 	{% endfor %}
 </table>
-<script src="scripts.js"></script>
+<canvas id="canvas" width="300" height="300">
+
+</canvas>
+	<script>
+		var num_id_fields = 1;
+
+		function add_id_field() {
+			num_id_fields++;
+			var form = document.getElementById("enter-ids");
+			var label = document.createElement("label");
+			var input = document.createElement("input");
+			label.innerText = "ID " + num_id_fields;
+			input.type = "text";
+			input.className = "id";
+			input.name = "id"+num_id_fields;
+			form.appendChild(label);
+			form.appendChild(input);
+			form.appendChild(document.createElement("br"));
+		}
+
+		var canvas = document.getElementById('canvas');
+		var ctx = canvas.getContext('2d');
+		var background = new Image();
+		var width = 300;
+		var height = 300;
+
+		background.src = "https://lh3.googleusercontent.com/JCaiDpY7R5hAJ4KU8D1YzHgQ5NaHDaEoN0udtNqa9P2ZuYCudPAda0yXE8BgIU8C8zdzXrzQ4p0DRqwhi8E2l5_kY7l7ZDzutjxg7OQegk7mj0SjeM0pLPDdPHoxnU5rPg_BRAKk3Ow=w1050-h665-no";
+
+		var points = new Array(2);
+		points[0] = [2,30,20];
+		points[1] = [200,200, 30];
+
+		function getDist(x1,y1,x2,y2) {
+			return Math.sqrt(Math.pow(x1-x2,2)+Math.pow(y1-y2,2));
+		}
+
+		function findMaxValue(points) {
+			var max = points[0][2];
+			for (var i=0;i<points.length; i++) {
+				if (points[i][2] > max) {
+					max = points[i][2];
+				}
+			}
+			return max;
+		}
+
+		function findMinValue(points) {
+			var min = points[0][2];
+			for (var i=0;i<points.length; i++) {
+				if (points[i][2] < min) {
+					min = points[i][2];
+				}
+			}
+			return min;
+		}
+
+		function weightedAverage(dists, totalDist) {
+			var wa = 0;
+			dists.forEach(function(e) {
+				wa += e[1]*e[0]/totalDist;
+			});
+			return wa;
+		}
+
+		function map(value, min, max, newMin, newMax) {
+			return (value - min) * (newMax - newMin) / (max - min) + newMin;
+		}
+
+		// draw heatmap
+		function draw() {
+			var min = findMinValue(points);
+			var max = findMaxValue(points);
+			for (var x=0;x<width;x++) {
+				for (var y=0;y<height;y++) {
+					var heat = 0;
+					var distances = [];
+					var totalDistance = 0;
+					for (var i=0;i<points.length;i++) {
+						var p = points[i];
+						var dist = getDist(p[0],p[1],x,y);
+						var entry = new Array(2);
+						entry[0] = dist;
+						entry[1] = p[2];
+						distances.push(entry);
+						totalDistance += dist;
+					}
+					var heat = map(weightedAverage(distances, totalDistance),min,max,0,1);
+					ctx.fillStyle = "rgba(1,0,0," + heat + ")";
+					console.log(heat);
+					ctx.fillRect(x,y,1,1);
+				}
+			}
+		}
+
+		var offLeft = canvas.offsetLeft;
+		var offTop = canvas.offsetTop;
+
+		// Add event listener for `click` events.
+		canvas.addEventListener('click', function(event) {
+			var x = event.pageX - offLeft,
+				y = event.pageY - offTop;
+
+			ctx.fillStyle = "#000";
+			ctx.fillRect(x,y,1,1);
+
+		}, false);
+
+
+
+	</script>
 </body>
 </html>
