@@ -127,6 +127,7 @@ def home():
             conn, cursor = database_connect()
             cursor.execute('SELECT * FROM blockchain;')
             results = cursor.fetchall()
+            #data2 = [123, 123,234,54]
             out = render_template("home.html", data=results)
             return out
         except:
