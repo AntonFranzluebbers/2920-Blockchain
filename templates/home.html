@@ -151,7 +151,7 @@ canvas.addEventListener('click', function (event) {
 		elem.moist2 = getMoist2(currentDevice);
 
 		// remove the point if it already is in the array
-		points = points.filter(p => p.device_id != currentDevice);
+		if (points) points = points.filter(p => p.device_id != currentDevice);
 
 		points.push(elem);
 		

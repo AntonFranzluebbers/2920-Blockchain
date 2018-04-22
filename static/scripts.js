@@ -46,7 +46,7 @@ function getPointsCookie() {
 	if (parts.length == 2) {
 		return JSON.parse(parts.pop().split(";").shift());
 	} else {
-		return;
+		return [];
 	}
 }
 
