@@ -8,8 +8,7 @@ import RPi.GPIO as GPIO
 import Adafruit_DHT as DHT
 
 url = "http://localhost:8000/"
-device_id = "PI-"
-device_id_num = 0;
+device_id = "PI-0"
 dht_sensor = DHT.DHT11
 
 # pins
@@ -30,7 +29,7 @@ def send_data(temp, humid, moist1, moist2):
 
     # create the data
     data = {
-        "device_id": device_id+device_id_num,
+        "device_id": device_id,
         "time": datetime.now(),
         "temp": temp,
         "humid": humid,
@@ -38,9 +37,6 @@ def send_data(temp, humid, moist1, moist2):
         "moist2": moist2
     }
     
-    device_id_num += 1
-    device_id_num = device_id_num % 100
-
     # get the response with nonce and hash
     response = requests.post(url + "construct", data=data)
     # add the nonce and hash to the data
