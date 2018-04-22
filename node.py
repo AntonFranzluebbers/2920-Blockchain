@@ -56,8 +56,10 @@ def sensor_loop():
 def sense():
     setup_pins()
     h,t = DHT.read_retry(dht_sensor, dht_pin)
+    m1 = GPIO.input(moist1_pin)
+    m2 = GPIO.input(moist2_pin)
     # TODO read from moisture sensors
-    send_data(t,h,0,0)
+    send_data(t,h,m1,m2)
     GPIO.cleanup()
 
 setup_pins()
