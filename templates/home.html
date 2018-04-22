@@ -3,6 +3,11 @@
 <head>
 	<title>Data output</title>
 	<style>
+
+		.red-background td {
+			background-color: rgba(100,0,0,.4);
+		}
+
 		table {
 			font-family: arial, sans-serif;
 			border-collapse: collapse;
@@ -31,15 +36,25 @@
 		#chosen-ids {
 			width:40em;
 		}
+
+		.positioning td {
+			border: 1px solid #000;
+		}
+
+		canvas {
+			border: 1px solid #000;
+		}
+
+
 	</style>
 
 </head>
-<body onload="draw()">
+<body onload="draw(); addChosenIdsBack();">
 <h2>Enter your device IDs</h2>
 <div id="enter-ids">
 	<label>Device ID</label>
 	<input type=text class=id id="id-input">
-	<button onclick="add_id()">Add</button>
+	<button onclick="addIdButton()">Add</button>
 </div>
 <div>
 	<table id="chosen-ids">
@@ -49,7 +64,7 @@
 			<td></td>
 		</tr>
 	</table>
-	<button onclick="clearCookies">Clear All</button>
+	<button onclick="clearCookies();">Clear All</button>
 </div>
 
 
@@ -93,7 +108,9 @@
 
 	var chosenPointsDiv = document.getElementById("chosen-ids");
 	var dataTable = document.getElementById("data-table");
-	//var data = '{{ data }}';
+	var data = JSON.parse('{{ data|tojson }}');
+	var chosenIds = [];
+	var chosenIdRows = [];
 
 	function getDist(x1, y1, x2, y2) {
 		return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
@@ -158,48 +175,70 @@
 		}
 	}
 
-	function startPositioning(which) {
+	function startPositioning(value) {
+		console.log("Start Positioning");
 		positioning = true;
-		currentDevice = which.id[which.id.length - 1];
-		chosenPointsDiv.getElementById("choosing-point-" + which.id).className = "red-text";
+		currentDevice = value;
+		findRow(value).classList.add("positioning");
+		//chosenPointsDiv.getElementById("choosing-point-" + value).className = "red-text";
 
 	}
 
-	function stopPositioning(which) {
+	function stopPositioning() {
+		console.log("Stop Positioning");
 		positioning = false;
-		chosenPointsDiv.getElementById("choosing-point-" + which.id).className = "hide";
+		findRow(currentDevice).classList.remove("positioning");
+		//chosenPointsDiv.getElementById("choosing-point-" + currentDevice).className = "hide";
+		draw();
 	}
 
-	function add_id() {
-		num_ids++;
-		var chosenIds = document.getElementById("chosen-ids");
+	function addIdButton() {
+		var input = document.getElementById("id-input");
+		if (chosenIds.includes(input.value)) {
+			alert("ID already added.");
+			return false;
+		}
+		addId(input.value);
+		return true
+	}
+
+	function addId(value) {
+		chosenIds.push(value);
+		setIdCookie();
+		addIdRow(value);
+	}
+
+	function addIdRow(value) {
+		var chosenIdsElem = document.getElementById("chosen-ids");
 		var row = document.createElement("tr");
 		var text = document.createElement("td");
 		var numDataCell = document.createElement("td");
-		var input = document.getElementById("id-input");
 		var button = document.createElement("button");
-		button.onclick = "startPositioning";
+		button.onclick = function() {
+			startPositioning(value);
+		};
 		button.innerText = "Position on Map";
-		button.id = "p_button" + num_ids;
+		button.id = "p_button" + chosenIds.length;
 		var buttonCell = document.createElement('td');
 		buttonCell.appendChild(button);
 
-		text.innerText = "ID " + num_ids + ": " + input.value;
-
-		var numData = findId(input.value);
-		if (numData == 0) {
-			var warning = document.createElement('p');
-			warning.innerText = "No data found for id.";
-			row.appendChild(warning);
-		}
-		numDataCell.innerText = numData;
+		text.innerText = value;
 
 		row.appendChild(text);
 		row.appendChild(numDataCell);
 		row.appendChild(buttonCell);
-		chosenIds.appendChild(row);
 
-		addIdCookie(input.value);
+		var numData = findId(value);
+		if (numData == 0) {
+			var warning = document.createElement('p');
+			warning.innerText = "No data found for id.";
+			row.appendChild(warning);
+			row.classList.add("red-background");
+		}
+		numDataCell.innerText = numData;
+
+		chosenIdsElem.appendChild(row);
+		chosenIdRows.push(row);
 	}
 
 	var offLeft = canvas.offsetLeft;
@@ -210,27 +249,39 @@
 		if (positioning) {
 			var x = event.pageX - offLeft;
 			var y = event.pageY - offTop;
-			var elem = new Array(2)
-			points.push();
+			var elem = new Object();
+			elem.x = x;
+			elem.y = y;
+			elem.temp = getTemp(currentDevice);
+			elem.humid = getHumid(currentDevice);
+			elem.moist1 = getMoist1(currentDevice);
+			elem.moist2 = getMoist2(currentDevice);
+			points.push(elem);
 
 			ctx.fillStyle = "#000";
 			ctx.fillRect(x - 1, y - 1, 2, 2);
-			stopPositioning(currentDevice)
+			stopPositioning(currentDevice);
 		}
 
 	}, false);
 
-	function addIdCookie(id) {
-		var currentCookie = getIdCookie();
-		if (currentCookie.length > 0) {
-			currentCookie.push(',');
+	function setIdCookie() {
+		var string = "chosen-ids=";
+		for(var i=0; i<chosenIds.length;i++) {
+			var id = chosenIds[i];
+			console.log(id);
+			string += id + ",";
 		}
-		document.cookie = "chosen-ids=" + getIdCookie() + id + "; expires=Fri, 31 Dec 9999 23:59:59 GMT"
+		string = string.slice(0,string.length-1);
+		string += "; expires=Fri, 31 Dec 9999 23:59:59 GMT";
+		document.cookie = string;
+		console.log(string);
 	}
 
 	function getIdCookie() {
-		var value = ";" + document.cookie;
-		var parts = document.cookie.split("; chosen-id=");
+		var oldCookie = document.cookie;
+		var value = ";" + oldCookie;
+		var parts = oldCookie.split("chosen-ids=");
 		if (parts.length == 2) {
 			return parts.pop().split(";").shift();
 		}
@@ -238,23 +289,92 @@
 	}
 
 	function clearCookies() {
-		document.cookie = "chosen-ids=; expires=Fri, 31 Dec 1970 23:59:59 GMT";
+		document.cookie = "chosen-ids=; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+		chosenIds = [];
+		deleteAllIdRows();
+	}
+
+	function deleteAllIdRows() {
+		var chosenIdsElem = document.getElementById("chosen-ids");
+		while(chosenIdsElem.childElementCount > 1) {
+			chosenIdsElem.removeChild(chosenIdsElem.lastChild);
+		}
+		chosenIdRows = [];
+	}
+
+	function addChosenIdsBack() {
+		var cookie = getIdCookie();
+		console.log(cookie);
+		if (cookie) {
+			chosenIds = cookie.split(",");
+			if (chosenIds.length > 0) {
+				for (var i=0; i<chosenIds.length; i++) {
+					var id = chosenIds[i];
+					if (id != "0") {
+						addIdRow(id);
+					}
+				}
+			}
+		}
 	}
 
 	function findId(id) {
 		var counter = 0;
-		for(var i in data) {
-			if (i==id) {
+		for(var i=0 ;i<data.length; i++) {
+			if (data[i]["device_id"] == id) {
 				counter++;
 			}
 		}
 		return counter;
 	}
 
+	function findRow(value) {
+		for (var i=0; i<chosenIdRows.length; i++) {
+			if (chosenIdRows[i].firstChild.innerText == value) {
+				return chosenIdRows[i];
+			}
+		}
+	}
+
 	// gets the data from python to a js array
-	addData();
+	//addData();
 	function addData() {
-		//data = {{}}
+	}
+
+	function getTemp(deviceId) {
+		for (var i=0;i<data.length;i++) {
+			if (data[i]["device_id"] == deviceId) {
+				return data[i]["temp"];
+			}
+		}
+		return 0;
+	}
+
+	function getHumid(deviceId) {
+		for (var i=0;i<data.length;i++) {
+			if (data[i]["device_id"] == deviceId) {
+				return data[i]["humid"];
+			}
+		}
+		return 0;
+	}
+
+	function getMoist1(deviceId) {
+		for (var i=0;i<data.length;i++) {
+			if (data[i]["device_id"] == deviceId) {
+				return data[i]["moist1"];
+			}
+		}
+		return 0;
+	}
+
+	function getMoist2(deviceId) {
+		for (var i=0;i<data.length;i++) {
+			if (data[i]["device_id"] == deviceId) {
+				return data[i]["moist2"];
+			}
+		}
+		return 0;
 	}
 
 
