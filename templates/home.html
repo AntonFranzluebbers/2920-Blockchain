@@ -1,55 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>Data output</title>
-	<style>
-
-		.red-background td {
-			background-color: rgba(100,0,0,.4);
-		}
-
-		table {
-			font-family: arial, sans-serif;
-			border-collapse: collapse;
-			width: 100%;
-		}
-
-		td, th {
-			border: 1px solid #dddddd;
-			text-align: left;
-			padding: 8px;
-		}
-
-		tr:nth-child(even) {
-			background-color: #dddddd;
-		}
-
-		.red-text {
-			color: darkred;
-			display: block;
-		}
-
-		.hide {
-			display: none;
-		}
-
-		#chosen-ids {
-			width:40em;
-		}
-
-		.positioning td {
-			border: 1px solid #000;
-		}
-
-		canvas {
-			border: 1px solid #000;
-		}
-
-
-	</style>
+	<title>Setup Sensors</title>
+	<link rel="stylesheet" type="text/css" href= "{{ url_for('static',filename='styles.css') }}">
 
 </head>
-<body onload="draw(); addChosenIdsBack();">
+<body onload="loadFromCookie(); drawAll(); loadIdRows();">
 <h2>Enter your device IDs</h2>
 <div id="enter-ids">
 	<label>Device ID</label>
@@ -67,317 +23,175 @@
 	<button onclick="clearCookies();">Clear All</button>
 </div>
 
+<h2>Position Sensors</h2>
+<canvas id="canvas" width="300" height="300"></canvas>
 
-<table id="data-table">
-	<tr>
-		<td>device_id</td>
-		<td>time</td>
-		<td>temp</td>
-		<td>humid</td>
-		<td>moist1</td>
-		<td>moist2</td>
-	</tr>
-	{% for item in data %}
-	<tr id={{item.device_id}}>
-		<td id="data-device-id">{{item.device_id}}</td>
-		<td>{{item.time}}</td>
-		<td>{{item.temp}}</td>
-		<td>{{item.humid}}</td>
-		<td>{{item.moist1}}</td>
-		<td>{{item.moist2}}</td>
-	</tr>
-	{% endfor %}
-</table>
-<canvas id="canvas" width="300" height="300">
+<a href="{{ url_for('display') }}"><div><h2>Save and View Data --></h2></div></a>
 
-</canvas>
+
 <script>
-	var num_ids = 1;
-	var positioning = false;
-	var currentDevice = 0;
+var num_ids = 1;
+var positioning = false;
+var currentDevice = 0;
 
-	var canvas = document.getElementById('canvas');
-	var ctx = canvas.getContext('2d');
-	var background = new Image();
-	var width = 300;
-	var height = 300;
+var canvas = document.getElementById('canvas');
+var ctx = canvas.getContext('2d');
+var background = new Image();
+var width = 300;
+var height = 300;
 
-	background.src = "https://lh3.googleusercontent.com/JCaiDpY7R5hAJ4KU8D1YzHgQ5NaHDaEoN0udtNqa9P2ZuYCudPAda0yXE8BgIU8C8zdzXrzQ4p0DRqwhi8E2l5_kY7l7ZDzutjxg7OQegk7mj0SjeM0pLPDdPHoxnU5rPg_BRAKk3Ow=w1050-h665-no";
+background.src = "https://lh3.googleusercontent.com/JCaiDpY7R5hAJ4KU8D1YzHgQ5NaHDaEoN0udtNqa9P2ZuYCudPAda0yXE8BgIU8C8zdzXrzQ4p0DRqwhi8E2l5_kY7l7ZDzutjxg7OQegk7mj0SjeM0pLPDdPHoxnU5rPg_BRAKk3Ow=w1050-h665-no";
 
-	var points = [];
+var points = [];
 
-	var chosenPointsDiv = document.getElementById("chosen-ids");
-	var dataTable = document.getElementById("data-table");
-	var data = JSON.parse('{{ data|tojson }}');
-	var chosenIds = [];
-	var chosenIdRows = [];
+var chosenPointsDiv = document.getElementById("chosen-ids");
+var dataTable = document.getElementById("data-table");
+var data = JSON.parse('{{ data|tojson }}');
+var chosenIds = [];
+var chosenIdRows = [];
 
-	function getDist(x1, y1, x2, y2) {
-		return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
-	}
+function drawAll() {
+	drawAllPoints(ctx);
+}
 
-	function findMaxValue(points) {
-		var max = points[0][2];
-		for (var i = 0; i < points.length; i++) {
-			if (points[i][2] > max) {
-				max = points[i][2];
-			}
-		}
-		return max;
-	}
+function startPositioning(value) {
+	if (positioning) stopPositioning();
+	console.log("Start Positioning");
+	positioning = true;
+	currentDevice = value;
+	findRow(value).classList.add("positioning");
+	//chosenPointsDiv.getElementById("choosing-point-" + value).className = "red-text";
 
-	function findMinValue(points) {
-		var min = points[0][2];
-		for (var i = 0; i < points.length; i++) {
-			if (points[i][2] < min) {
-				min = points[i][2];
-			}
-		}
-		return min;
-	}
+}
 
-	function weightedAverage(dists, totalDist) {
-		var wa = 0;
-		dists.forEach(function (e) {
-			wa += e[1] * e[0] / totalDist;
-		});
-		return wa;
-	}
-
-	function map(value, min, max, newMin, newMax) {
-		return (value - min) * (newMax - newMin) / (max - min) + newMin;
-	}
-
-	// draw heatmap
-	function draw() {
-		if (points.length > 0) {
-			var min = findMinValue(points);
-			var max = findMaxValue(points);
-			for (var x = 0; x < width; x++) {
-				for (var y = 0; y < height; y++) {
-					var heat = 0;
-					var distances = [];
-					var totalDistance = 0;
-					for (var i = 0; i < points.length; i++) {
-						var p = points[i];
-						var dist = getDist(p[0], p[1], x, y);
-						var entry = new Array(2);
-						entry[0] = dist;
-						entry[1] = p[2];
-						distances.push(entry);
-						totalDistance += dist;
-					}
-					var heat = map(weightedAverage(distances, totalDistance), min, max, 0, 1);
-					ctx.fillStyle = "rgba(1,0,0," + heat + ")";
-					ctx.fillRect(x, y, 1, 1);
-				}
-			}
-		}
-	}
-
-	function startPositioning(value) {
-		console.log("Start Positioning");
-		positioning = true;
-		currentDevice = value;
-		findRow(value).classList.add("positioning");
-		//chosenPointsDiv.getElementById("choosing-point-" + value).className = "red-text";
-
-	}
-
-	function stopPositioning() {
-		console.log("Stop Positioning");
-		positioning = false;
+function stopPositioning() {
+	console.log("Stop Positioning");
+	positioning = false;
+	if (currentDevice) {
 		findRow(currentDevice).classList.remove("positioning");
-		//chosenPointsDiv.getElementById("choosing-point-" + currentDevice).className = "hide";
-		draw();
 	}
+	//chosenPointsDiv.getElementById("choosing-point-" + currentDevice).className = "hide";
+	//draw();
+}
 
-	function addIdButton() {
-		var input = document.getElementById("id-input");
-		if (chosenIds.includes(input.value)) {
-			alert("ID already added.");
-			return false;
-		}
-		addId(input.value);
-		return true
+function addIdButton() {
+	var input = document.getElementById("id-input");
+	if (chosenIds.includes(input.value)) {
+		alert("ID already added.");
+		return false;
 	}
+	addId(input.value);
+	return true
+}
 
-	function addId(value) {
-		chosenIds.push(value);
-		setIdCookie();
-		addIdRow(value);
+function addId(value) {
+	chosenIds.push(value);
+	setIdCookie();
+	addIdRow(value);
+}
+
+function addIdRow(value) {
+	var chosenIdsElem = document.getElementById("chosen-ids");
+	var row = document.createElement("tr");
+	var text = document.createElement("td");
+	var numDataCell = document.createElement("td");
+	var button = document.createElement("button");
+	button.onclick = function() {
+		startPositioning(value);
+	};
+	button.innerText = "Position on Map";
+	button.id = "p_button" + chosenIds.length;
+	var buttonCell = document.createElement('td');
+	buttonCell.appendChild(button);
+
+	text.innerText = value;
+
+	row.appendChild(text);
+	row.appendChild(numDataCell);
+	row.appendChild(buttonCell);
+
+	var numData = findId(value);
+	if (numData == 0) {
+		var warning = document.createElement('p');
+		warning.innerText = "No data found for id.";
+		row.appendChild(warning);
+		row.classList.add("red-background");
 	}
+	numDataCell.innerText = numData;
 
-	function addIdRow(value) {
-		var chosenIdsElem = document.getElementById("chosen-ids");
-		var row = document.createElement("tr");
-		var text = document.createElement("td");
-		var numDataCell = document.createElement("td");
-		var button = document.createElement("button");
-		button.onclick = function() {
-			startPositioning(value);
-		};
-		button.innerText = "Position on Map";
-		button.id = "p_button" + chosenIds.length;
-		var buttonCell = document.createElement('td');
-		buttonCell.appendChild(button);
+	chosenIdsElem.appendChild(row);
+	chosenIdRows.push(row);
+}
 
-		text.innerText = value;
-
-		row.appendChild(text);
-		row.appendChild(numDataCell);
-		row.appendChild(buttonCell);
-
-		var numData = findId(value);
-		if (numData == 0) {
-			var warning = document.createElement('p');
-			warning.innerText = "No data found for id.";
-			row.appendChild(warning);
-			row.classList.add("red-background");
-		}
-		numDataCell.innerText = numData;
-
-		chosenIdsElem.appendChild(row);
-		chosenIdRows.push(row);
-	}
-
-	var offLeft = canvas.offsetLeft;
-	var offTop = canvas.offsetTop;
-
-	// Add event listener for `click` events.
-	canvas.addEventListener('click', function (event) {
-		if (positioning) {
-			var x = event.pageX - offLeft;
-			var y = event.pageY - offTop;
-			var elem = new Object();
-			elem.x = x;
-			elem.y = y;
-			elem.temp = getTemp(currentDevice);
-			elem.humid = getHumid(currentDevice);
-			elem.moist1 = getMoist1(currentDevice);
-			elem.moist2 = getMoist2(currentDevice);
-			points.push(elem);
-
-			ctx.fillStyle = "#000";
-			ctx.fillRect(x - 1, y - 1, 2, 2);
-			stopPositioning(currentDevice);
-		}
-
-	}, false);
-
-	function setIdCookie() {
-		var string = "chosen-ids=";
-		for(var i=0; i<chosenIds.length;i++) {
+function loadIdRows() {
+	if (chosenIds.length > 0) {
+		for (var i=0; i<chosenIds.length; i++) {
 			var id = chosenIds[i];
-			console.log(id);
-			string += id + ",";
-		}
-		string = string.slice(0,string.length-1);
-		string += "; expires=Fri, 31 Dec 9999 23:59:59 GMT";
-		document.cookie = string;
-		console.log(string);
-	}
-
-	function getIdCookie() {
-		var oldCookie = document.cookie;
-		var value = ";" + oldCookie;
-		var parts = oldCookie.split("chosen-ids=");
-		if (parts.length == 2) {
-			return parts.pop().split(";").shift();
-		}
-		else return "";
-	}
-
-	function clearCookies() {
-		document.cookie = "chosen-ids=; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
-		chosenIds = [];
-		deleteAllIdRows();
-	}
-
-	function deleteAllIdRows() {
-		var chosenIdsElem = document.getElementById("chosen-ids");
-		while(chosenIdsElem.childElementCount > 1) {
-			chosenIdsElem.removeChild(chosenIdsElem.lastChild);
-		}
-		chosenIdRows = [];
-	}
-
-	function addChosenIdsBack() {
-		var cookie = getIdCookie();
-		console.log(cookie);
-		if (cookie) {
-			chosenIds = cookie.split(",");
-			if (chosenIds.length > 0) {
-				for (var i=0; i<chosenIds.length; i++) {
-					var id = chosenIds[i];
-					if (id != "0") {
-						addIdRow(id);
-					}
-				}
+			if (id != "0") {
+				addIdRow(id);
 			}
 		}
 	}
+}
 
-	function findId(id) {
-		var counter = 0;
-		for(var i=0 ;i<data.length; i++) {
-			if (data[i]["device_id"] == id) {
-				counter++;
-			}
+// Add event listener for `click` events.
+canvas.addEventListener('click', function (event) {
+	if (positioning) {
+		var offLeft = canvas.offsetLeft;
+		var offTop = canvas.offsetTop;
+		var x = event.pageX - offLeft;
+		var y = event.pageY - offTop;
+		var elem = new Object();
+		elem.x = x;
+		elem.y = y;
+		elem.device_id = currentDevice;
+		elem.temp = getTemp(currentDevice);
+		elem.humid = getHumid(currentDevice);
+		elem.moist1 = getMoist1(currentDevice);
+		elem.moist2 = getMoist2(currentDevice);
+
+		// remove the point if it already is in the array
+		points = points.filter(p => p.device_id != currentDevice);
+
+		points.push(elem);
+		
+		setPointsCookie();
+
+		clearCanvas();
+		drawAllPoints(ctx);
+		
+		stopPositioning();
+	}
+
+}, false);
+
+function deleteAllIdRows() {
+	var chosenIdsElem = document.getElementById("chosen-ids");
+	while(chosenIdsElem.childElementCount > 1) {
+		chosenIdsElem.removeChild(chosenIdsElem.lastChild);
+	}
+	chosenIdRows = [];
+}
+
+function findId(id) {
+	var counter = 0;
+	for(var i=0 ;i<data.length; i++) {
+		if (data[i]["device_id"] == id) {
+			counter++;
 		}
-		return counter;
 	}
+	return counter;
+}
 
-	function findRow(value) {
-		for (var i=0; i<chosenIdRows.length; i++) {
-			if (chosenIdRows[i].firstChild.innerText == value) {
-				return chosenIdRows[i];
-			}
+function findRow(value) {
+	for (var i=0; i<chosenIdRows.length; i++) {
+		if (chosenIdRows[i].firstChild.innerText == value) {
+			return chosenIdRows[i];
 		}
 	}
-
-	// gets the data from python to a js array
-	//addData();
-	function addData() {
-	}
-
-	function getTemp(deviceId) {
-		for (var i=0;i<data.length;i++) {
-			if (data[i]["device_id"] == deviceId) {
-				return data[i]["temp"];
-			}
-		}
-		return 0;
-	}
-
-	function getHumid(deviceId) {
-		for (var i=0;i<data.length;i++) {
-			if (data[i]["device_id"] == deviceId) {
-				return data[i]["humid"];
-			}
-		}
-		return 0;
-	}
-
-	function getMoist1(deviceId) {
-		for (var i=0;i<data.length;i++) {
-			if (data[i]["device_id"] == deviceId) {
-				return data[i]["moist1"];
-			}
-		}
-		return 0;
-	}
-
-	function getMoist2(deviceId) {
-		for (var i=0;i<data.length;i++) {
-			if (data[i]["device_id"] == deviceId) {
-				return data[i]["moist2"];
-			}
-		}
-		return 0;
-	}
-
+}
 
 </script>
+<script type="text/javascript" src="{{ url_for('static', filename='scripts.js')}}"></script>
 </body>
 </html>
