@@ -3,31 +3,57 @@
 <head>
 	<title>Data output</title>
 	<style>
-table {
-    font-family: arial, sans-serif;
-    border-collapse: collapse;
-    width: 100%;
-}
+		table {
+			font-family: arial, sans-serif;
+			border-collapse: collapse;
+			width: 100%;
+		}
 
-td, th {
-    border: 1px solid #dddddd;
-    text-align: left;
-    padding: 8px;
-}
+		td, th {
+			border: 1px solid #dddddd;
+			text-align: left;
+			padding: 8px;
+		}
 
-tr:nth-child(even) {
-    background-color: #dddddd;
-}
+		tr:nth-child(even) {
+			background-color: #dddddd;
+		}
+
+		.red-text {
+			color: darkred;
+			display: block;
+		}
+
+		.hide {
+			display: none;
+		}
+
+		#chosen-ids {
+			width:40em;
+		}
 	</style>
+
 </head>
-<body>
-	<h2>Enter your device IDs</h2>
-	<form name="enter-ids" id="enter-ids">
-		<label>ID 1</label>
-		<input type=text class=id name=id1></input>
-		<button onclick="add_id_field">Add another</button>
-	</form>
-<table>
+<body onload="draw()">
+<h2>Enter your device IDs</h2>
+<div id="enter-ids">
+	<label>Device ID</label>
+	<input type=text class=id id="id-input">
+	<button onclick="add_id()">Add</button>
+</div>
+<div>
+	<table id="chosen-ids">
+		<tr>
+			<td>Device Id</td>
+			<td>Number of Data Points</td>
+			<td></td>
+		</tr>
+	</table>
+	<button onclick="clearCookies">Clear All</button>
+</div>
+
+
+<table id="data-table">
 	<tr>
 		<td>device_id</td>
 		<td>time</td>
@@ -38,7 +64,7 @@ tr:nth-child(even) {
 	</tr>
 	{% for item in data %}
 	<tr id={{item.device_id}}>
-		<td>{{item.device_id}}</td>
+		<td id="data-device-id">{{item.device_id}}</td>
 		<td>{{item.time}}</td>
 		<td>{{item.temp}}</td>
 		<td>{{item.humid}}</td>
@@ -47,6 +73,191 @@ tr:nth-child(even) {
 	</tr>
 	{% endfor %}
 </table>
-<script src="scripts.js"></script>
+<canvas id="canvas" width="300" height="300">
+
+</canvas>
+<script>
+	var num_ids = 1;
+	var positioning = false;
+	var currentDevice = 0;
+
+	var canvas = document.getElementById('canvas');
+	var ctx = canvas.getContext('2d');
+	var background = new Image();
+	var width = 300;
+	var height = 300;
+
+	background.src = "https://lh3.googleusercontent.com/JCaiDpY7R5hAJ4KU8D1YzHgQ5NaHDaEoN0udtNqa9P2ZuYCudPAda0yXE8BgIU8C8zdzXrzQ4p0DRqwhi8E2l5_kY7l7ZDzutjxg7OQegk7mj0SjeM0pLPDdPHoxnU5rPg_BRAKk3Ow=w1050-h665-no";
+
+	var points = [];
+
+	var chosenPointsDiv = document.getElementById("chosen-ids");
+	var dataTable = document.getElementById("data-table");
+	//var data = '{{ data }}';
+
+	function getDist(x1, y1, x2, y2) {
+		return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
+	}
+
+	function findMaxValue(points) {
+		var max = points[0][2];
+		for (var i = 0; i < points.length; i++) {
+			if (points[i][2] > max) {
+				max = points[i][2];
+			}
+		}
+		return max;
+	}
+
+	function findMinValue(points) {
+		var min = points[0][2];
+		for (var i = 0; i < points.length; i++) {
+			if (points[i][2] < min) {
+				min = points[i][2];
+			}
+		}
+		return min;
+	}
+
+	function weightedAverage(dists, totalDist) {
+		var wa = 0;
+		dists.forEach(function (e) {
+			wa += e[1] * e[0] / totalDist;
+		});
+		return wa;
+	}
+
+	function map(value, min, max, newMin, newMax) {
+		return (value - min) * (newMax - newMin) / (max - min) + newMin;
+	}
+
+	// draw heatmap
+	function draw() {
+		if (points.length > 0) {
+			var min = findMinValue(points);
+			var max = findMaxValue(points);
+			for (var x = 0; x < width; x++) {
+				for (var y = 0; y < height; y++) {
+					var heat = 0;
+					var distances = [];
+					var totalDistance = 0;
+					for (var i = 0; i < points.length; i++) {
+						var p = points[i];
+						var dist = getDist(p[0], p[1], x, y);
+						var entry = new Array(2);
+						entry[0] = dist;
+						entry[1] = p[2];
+						distances.push(entry);
+						totalDistance += dist;
+					}
+					var heat = map(weightedAverage(distances, totalDistance), min, max, 0, 1);
+					ctx.fillStyle = "rgba(1,0,0," + heat + ")";
+					ctx.fillRect(x, y, 1, 1);
+				}
+			}
+		}
+	}
+
+	function startPositioning(which) {
+		positioning = true;
+		currentDevice = which.id[which.id.length - 1];
+		chosenPointsDiv.getElementById("choosing-point-" + which.id).className = "red-text";
+
+	}
+
+	function stopPositioning(which) {
+		positioning = false;
+		chosenPointsDiv.getElementById("choosing-point-" + which.id).className = "hide";
+	}
+
+	function add_id() {
+		num_ids++;
+		var chosenIds = document.getElementById("chosen-ids");
+		var row = document.createElement("tr");
+		var text = document.createElement("td");
+		var numDataCell = document.createElement("td");
+		var input = document.getElementById("id-input");
+		var button = document.createElement("button");
+		button.onclick = "startPositioning";
+		button.innerText = "Position on Map";
+		button.id = "p_button" + num_ids;
+		var buttonCell = document.createElement('td');
+		buttonCell.appendChild(button);
+
+		text.innerText = "ID " + num_ids + ": " + input.value;
+
+		var numData = findId(input.value);
+		if (numData == 0) {
+			var warning = document.createElement('p');
+			warning.innerText = "No data found for id.";
+			row.appendChild(warning);
+		}
+		numDataCell.innerText = numData;
+
+		row.appendChild(text);
+		row.appendChild(numDataCell);
+		row.appendChild(buttonCell);
+		chosenIds.appendChild(row);
+
+		addIdCookie(input.value);
+	}
+
+	var offLeft = canvas.offsetLeft;
+	var offTop = canvas.offsetTop;
+
+	// Add event listener for `click` events.
+	canvas.addEventListener('click', function (event) {
+		if (positioning) {
+			var x = event.pageX - offLeft;
+			var y = event.pageY - offTop;
+			var elem = new Array(2)
+			points.push();
+
+			ctx.fillStyle = "#000";
+			ctx.fillRect(x - 1, y - 1, 2, 2);
+			stopPositioning(currentDevice)
+		}
+
+	}, false);
+
+	function addIdCookie(id) {
+		var currentCookie = getIdCookie();
+		if (currentCookie.length > 0) {
+			currentCookie.push(',');
+		}
+		document.cookie = "chosen-ids=" + getIdCookie() + id + "; expires=Fri, 31 Dec 9999 23:59:59 GMT"
+	}
+
+	function getIdCookie() {
+		var value = ";" + document.cookie;
+		var parts = document.cookie.split("; chosen-id=");
+		if (parts.length == 2) {
+			return parts.pop().split(";").shift();
+		}
+		else return "";
+	}
+
+	function clearCookies() {
+		document.cookie = "chosen-ids=; expires=Fri, 31 Dec 1970 23:59:59 GMT";
+	}
+
+	function findId(id) {
+		var counter = 0;
+		for(var i in data) {
+			if (i==id) {
+				counter++;
+			}
+		}
+		return counter;
+	}
+
+	// gets the data from python to a js array
+	addData();
+	function addData() {
+		//data = {{}}
+	}
+
+
+</script>
 </body>
 </html>
