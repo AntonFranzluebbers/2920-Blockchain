@@ -1,5 +1,14 @@
-function clearCanvas() {
-	ctx.clearRect(0,0,canvas.width,canvas.height);
+
+var background = new Image();
+background.src = "https://lh3.googleusercontent.com/lpuKECB0msW6wEUXdlIihu1hyt14DvyTQ8csxVLlfxN_YkM-sz3P6MkfKM427lc4DZnEPrho5FrlvdJJtDhWkjj5HsEr8SUzJfdY_du5Po3Z6OUTjVMfqtDIdK710Lz7ySjlUEd6K6g=s766-no";
+
+function drawBackground(ctx) {
+}
+
+function clearCanvas(ctx) {
+	ctx.clearRect(0,0,300,300);
+	ctx.drawImage(background, 0, 0, 300, 300);
+	return background.url;
 }
 
 function drawAllPoints(ctx) {
@@ -29,6 +38,22 @@ function setIdCookie() {
 	string += "; expires=Fri, 31 Dec 9999 23:59:59 GMT";
 	document.cookie = string;
 	console.log(string);
+}
+
+function setImageCookie() {
+	var string = 'bgimage=';
+	string+=background.src;
+	string += "; expires=Fri, 31 Dec 9999 23:59:59 GMT";
+	document.cookie = string;
+}
+
+function getImageCookie() {
+	var oldCookie = document.cookie;
+	var parts = oldCookie.split("bgimage=");
+	if (parts.length == 2) {
+		return parts.pop().split(";").shift();
+	}
+	else return "";
 }
 
 function getIdCookie() {
@@ -69,6 +94,10 @@ function clearCookies() {
 function loadFromCookie() {
 	points = getPointsCookie();
 	var cookie = getIdCookie();
+	var bgimage = getImageCookie();
+	if (bgimage != "") {
+		background.src = bgimage;
+	}
 	console.log(cookie);
 	if (cookie) {
 		chosenIds = cookie.split(",");
@@ -127,4 +156,23 @@ function getMostRecentData(deviceId) {
 	//var mostRecentDate = Math.min.apply(Math, data.map(function(d) {if (d["device_id"]==deviceId) return data["timestamp"]}));
 	//var mostRecentData = data.find(d => d["device_id"] == deviceId && d["time"] == mostRecentDate);
 	//return mostRecentData;
+}
+
+
+function findMinObj(obj, ind) {
+	if (!obj) return;
+	var min = obj[0];
+	for (var i=0;i<obj.length; i++) {
+		if (min[ind] > obj[i][ind]) {
+			min = obj[i];
+		}
+	}
+	return min;
+}
+
+function changeBackgroundImage() {
+	var imageUrl = document.getElementById("image-entry").value;
+	background.src = imageUrl;
+	setImageCookie();
+	drawAll(ctx);
 }

@@ -20,15 +20,17 @@
 			<td></td>
 		</tr>
 	</table>
-	<button onclick="clearCookies();">Clear All</button>
+	<button onclick="clearCookies();drawAll();">Clear All</button>
 </div>
 
 <h2>Position Sensors</h2>
 <canvas id="canvas" width="300" height="300"></canvas>
+<br><label>Enter background image URL: </label><input id=image-entry value="https://lh3.googleusercontent.com/lpuKECB0msW6wEUXdlIihu1hyt14DvyTQ8csxVLlfxN_YkM-sz3P6MkfKM427lc4DZnEPrho5FrlvdJJtDhWkjj5HsEr8SUzJfdY_du5Po3Z6OUTjVMfqtDIdK710Lz7ySjlUEd6K6g=s766-no" /><button onclick="changeBackgroundImage()">Update</button>
 
 <a href="{{ url_for('display') }}"><div><h2>Save and View Data --></h2></div></a>
 
 
+<script type="text/javascript" src="{{ url_for('static', filename='scripts.js')}}"></script>
 <script>
 var num_ids = 1;
 var positioning = false;
@@ -36,11 +38,9 @@ var currentDevice = 0;
 
 var canvas = document.getElementById('canvas');
 var ctx = canvas.getContext('2d');
-var background = new Image();
 var width = 300;
 var height = 300;
 
-background.src = "https://lh3.googleusercontent.com/JCaiDpY7R5hAJ4KU8D1YzHgQ5NaHDaEoN0udtNqa9P2ZuYCudPAda0yXE8BgIU8C8zdzXrzQ4p0DRqwhi8E2l5_kY7l7ZDzutjxg7OQegk7mj0SjeM0pLPDdPHoxnU5rPg_BRAKk3Ow=w1050-h665-no";
 
 var points = [];
 
@@ -51,6 +51,8 @@ var chosenIds = [];
 var chosenIdRows = [];
 
 function drawAll() {
+	// drawBackground(ctx);
+	clearCanvas(ctx);
 	drawAllPoints(ctx);
 }
 
@@ -157,7 +159,7 @@ canvas.addEventListener('click', function (event) {
 		
 		setPointsCookie();
 
-		clearCanvas();
+		clearCanvas(ctx);
 		drawAllPoints(ctx);
 		
 		stopPositioning();
@@ -192,6 +194,5 @@ function findRow(value) {
 }
 
 </script>
-<script type="text/javascript" src="{{ url_for('static', filename='scripts.js')}}"></script>
 </body>
 </html>

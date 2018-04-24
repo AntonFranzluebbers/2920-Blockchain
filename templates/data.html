@@ -13,24 +13,41 @@
 		<div>
 			<h2>Temp</h2>
 			<canvas id="canvas_temp" width="300" height="300"></canvas>
+			<br>
+			<img src="{{ url_for('static',filename='img/warm-cool.png') }}" />
+			<br>
+			<div style="width:300px; margin:0;"><span id=temp_left style="float:left;"></span><span id=temp_right style="float:right;"></span></div>
 		</div>
 		<div>
 			<h2>Humidity</h2>
 			<canvas id="canvas_humid" width="300" height="300"></canvas>
+			<br>
+			<img src="{{ url_for('static',filename='img/humid-dry.png') }}" />
+			<br>
+			<div style="width:300px; margin:0;"><span id=humid_left style="float:left;"></span><span id=humid_right style="float:right;"></span></div>
 		</div>
 		<div>
 			<h2>Moisture at depth 1</h2>
 			<canvas id="canvas_moist1" width="300" height="300"></canvas>
+			<br>
 			<!-- <div id="moist1-div" class="moist-div"></div> -->
+			<img src="{{ url_for('static',filename='img/wet-dry.png') }}" />
+			<br>
+			<div style="width:300px; margin:0;"><span id=m1_left style="float:left;"></span><span id=m1_right style="float:right;"></span></div>
 		</div>
 		<div>
 			<h2>Moisture at depth 2</h2>
 			<canvas id="canvas_moist2" width="300" height="300"></canvas>
+			<br>
 			<!-- <div id="moist2-div" class="moist-div"></div> -->
+			<img src="{{ url_for('static',filename='img/wet-dry.png') }}" />
+			<br>
+			<div style="width:300px; margin:0;"><span id=m2_left style="float:left;"></span><span id=m2_right style="float:right;"></span></div>
+		</div>
 		</div>
 	</div>
 
-	<a href="/">
+	<a href="/" style="float:left;">
 		<div>
 			<h2>&lt;-- Position Sensors</h2>
 		</div>
@@ -49,11 +66,8 @@
 		var ctx_humid = canvas_humid.getContext('2d');
 		var ctx_moist1 = canvas_moist1.getContext('2d');
 		var ctx_moist2 = canvas_moist2.getContext('2d');
-		var background = new Image();
 		var width = 300;
 		var height = 300;
-
-		background.src = "https://lh3.googleusercontent.com/JCaiDpY7R5hAJ4KU8D1YzHgQ5NaHDaEoN0udtNqa9P2ZuYCudPAda0yXE8BgIU8C8zdzXrzQ4p0DRqwhi8E2l5_kY7l7ZDzutjxg7OQegk7mj0SjeM0pLPDdPHoxnU5rPg_BRAKk3Ow=w1050-h665-no";
 
 		var points = [];
 
@@ -87,6 +101,7 @@
 			return min;
 		}
 
+
 		function weightedAverage(dists, totalDist) {
 			var wa = 0;
 			dists.forEach(function (e) {
@@ -96,14 +111,91 @@
 		}
 
 		function map(value, min, max, newMin, newMax) {
+			if (min-max == 0) {
+				return newMin;
+			}
 			return (value - min) * (newMax - newMin) / (max - min) + newMin;
 		}
 
 		function drawAll() {
+			clearCanvas(ctx_temp);
 			draw(ctx_temp, "temp");
+			clearCanvas(ctx_humid);
 			draw(ctx_humid, "humid");
+			clearCanvas(ctx_moist1);
 			draw(ctx_moist1, "moist1");
+			clearCanvas(ctx_moist2);
 			draw(ctx_moist2, "moist2");
+		}
+
+		// draw heatmap
+		function drawHeatmap(ctx, dataType) {
+			if (points.length > 0) {
+				var min, max;
+				if (dataType == "temp") {
+					min = Math.min(...points.map(d => d.temp));
+					max = Math.max(...points.map(d => d.temp));
+				} else if (dataType == "humid") {
+					min = Math.min(...points.map(d => d.humid));
+					max = Math.max(...points.map(d => d.humid));
+				} else if (dataType == "moist1") {
+					min = Math.min(...points.map(d => d.moist1));
+					max = Math.max(...points.map(d => d.moist1));
+				} else if (dataType == "moist1") {
+					min = Math.min(...points.map(d => d.moist2));
+					max = Math.max(...points.map(d => d.moist2));
+				}
+
+				for (var x = 0; x < width; x++) {
+					for (var y = 0; y < height; y++) {
+						var heat = 0;
+						var distances = [];
+						var totalDistance = 0;
+						for (var i = 0; i < points.length; i++) {
+							var p = points[i];
+							var dist = getDist(p.x, p.y, x, y);
+							var entry = new Array(2);
+							entry[0] = dist;
+							if (dataType == "temp") {
+								entry[1] = p.temp;
+							} else if (dataType == "humid") {
+								entry[1] = p.humid;
+							} else if (dataType == "moist1") {
+								entry[1] = p.moist1;
+							} else if (dataType == "moist2") {
+								entry[1] = p.moist2;
+							}
+
+							distances.push(entry);
+							totalDistance += dist;
+						}
+						var heat;
+						if (dataType == "temp") {
+							heat = map(weightedAverage(distances, totalDistance), min, max, 0, 255);
+							ctx.fillStyle = "rgba(" + heat + "," + (255 - heat) + ",0, .5)";
+							document.getElementById("temp_right").innerText = min + " C";
+							document.getElementById("temp_left").innerText = max + " C";
+						} else if (dataType == "humid") {
+							heat = map(weightedAverage(distances, totalDistance), min, max, 0, 255);
+							ctx.fillStyle = "rgba(" + heat + "," + heat + ",255, .5)";
+							document.getElementById("humid_right").innerText = min + " %";
+							document.getElementById("humid_left").innerText = max + " %";
+						} else if (dataType == "moist1" || dataType == "moist2") {
+							heat = map(weightedAverage(distances, totalDistance), 0, 1, 0, 255);
+							ctx.fillStyle = "rgba(" + heat + "," + (255 - heat) + ",0, .5)";
+							document.getElementById("m1_right").innerText = "100%";
+							document.getElementById("m1_left").innerText = "0%";
+							document.getElementById("m2_right").innerText = "100%";
+							document.getElementById("m2_left").innerText = "0%";
+						}
+
+						//console.log(heat);
+
+						ctx.fillRect(x, y, 1, 1);
+					}
+				}
+			}
+			drawAllPoints(ctx);
 		}
 
 		// draw heatmap
@@ -149,14 +241,22 @@
 						}
 						var heat;
 						if (dataType == "temp") {
-							heat = map(weightedAverage(distances, totalDistance), 0, 40, 0, 255);
+							heat = map(findMinObj(distances, 0)[1], min, max, 0, 255);
 							ctx.fillStyle = "rgba(" + heat + "," + (255 - heat) + ",0, .5)";
+							document.getElementById("temp_right").innerText = min + " C";
+							document.getElementById("temp_left").innerText = max + " C";
 						} else if (dataType == "humid") {
-							heat = map(weightedAverage(distances, totalDistance), 0, 100, 0, 255);
+							heat = map(findMinObj(distances, 0)[1], min, max, 0, 255);
 							ctx.fillStyle = "rgba(" + heat + "," + heat + ",255, .5)";
+							document.getElementById("humid_right").innerText = min + " %";
+							document.getElementById("humid_left").innerText = max + " %";
 						} else if (dataType == "moist1" || dataType == "moist2") {
-							heat = map(weightedAverage(distances, totalDistance), 0, 1, 0, 255);
+							heat = map(findMinObj(distances, 0)[1], 0, 1, 0, 255);
 							ctx.fillStyle = "rgba(" + heat + "," + (255 - heat) + ",0, .5)";
+							document.getElementById("m1_right").innerText = "100%";
+							document.getElementById("m1_left").innerText = "0%";
+							document.getElementById("m2_right").innerText = "100%";
+							document.getElementById("m2_left").innerText = "0%";
 						}
 
 						//console.log(heat);

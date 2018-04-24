@@ -43,6 +43,16 @@ def get_pre_hash(cursor):
     else:
         return ""
 
+def strip_data(data):
+    data2 = data["id"]
+    data2.update(data["device_id"])
+    data2.update(data["time"])
+    data2.update(data["temp"])
+    data2.update(data["humid"])
+    data2.update(data["moist1"])
+    data2.update(data["moist2"])
+    return data2
+
 
 def database_connect():
     conn = sqlite3.connect('blockchain.db')
@@ -125,7 +135,7 @@ def home():
     if request.method == 'GET':
         try:
             conn, cursor = database_connect()
-            cursor.execute('SELECT * FROM blockchain;')
+            cursor.execute('SELECT id,device_id,time,temp,humid,moist1,moist2 FROM blockchain;')
             results = cursor.fetchall()
             #data2 = [123, 123,234,54]
             out = render_template("home.html", data=results)
@@ -142,7 +152,7 @@ def display():
     if request.method == 'GET':
         try:
             conn, cursor = database_connect()
-            cursor.execute('SELECT * FROM blockchain;')
+            cursor.execute('SELECT id,device_id,time,temp,humid,moist1,moist2 FROM blockchain;')
             results = cursor.fetchall()
             out = render_template("data.html", data=results)
             return out
