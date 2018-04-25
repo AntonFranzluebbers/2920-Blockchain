@@ -2,10 +2,14 @@
 ## An Array of Solar Powered Soil Monitoring Stations
 _Anton Franzluebbers_
 
-## To Use Hosted Web Portal
+## To Use My Self-Hosted Web Portal
 
 http://2920proj.ddns.net/  
 http://2920proj.ddns.net/display_all/ shows the data with hash and nonce. This page would be removed in production.  
+If it doesn't work, it is because my Raspberry Pi isn't plugged in. Contact me if you want me to turn it on.  
+Go to http://2920proj.ddns.net/ or http://2920proj.ddns.net/display_all just like above.  
+To add data, modify the url in `tester.py` from `http://localhost:8000/` to `http://2920proj.ddns.net/` and run it locally.  
+`tester.py` first gets a correct nonce and hash from the server, then sends back the data with the nonce and hash to be added to the database.
 
 ## To Use Locally
 
@@ -25,14 +29,8 @@ Go to `localhost:8000/` for the data.
 Go to `localhost:8000/display` for the data.  
 Go to `localhost:8000/display_all` for data including the nonce and hash.
 
-## To use on my hosted server
-If it doesn't work, it is because my Raspberry Pi isn't plugged in. Contact me if you want me to turn it on.  
-Go to http://2920proj.ddns.net/ or http://2920proj.ddns.net/display_all just like above.  
-To add data, modify the url in `tester.py` from `http://localhost:8000/` to `http://2920proj.ddns.net/` and run it locally.  
-`tester.py` first gets a correct nonce and hash from the server, then sends back the data with the nonce and hash to be added to the database.
-
 ## Video
-https://youtu.be/Kgwnvgy4lSY - old video
+https://youtu.be/Kgwnvgy4lSY - old video  
 https://youtu.be/V62epPNxirA - overview of project
 
 ## References
